@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배너 시안 미리보기 시뮬레이터</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #33343f; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a4b57; }
+
+  /* Layout */
+  .app-layout { display: flex; height: 100vh; }
+
+  /* ===== LEFT PANEL ===== */
+  .left-panel {
+    width: 320px;
+    min-width: 320px;
+    background: #1a1b23;
+    border-right: 1px solid #25262f;
+    overflow-y: auto;
+    height: 100vh;
+    flex-shrink: 0;
+  }
+  .panel-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid #25262f;
+  }
+  .panel-header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.01em;
+  }
+  .panel-header p {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 3px;
+  }
+
+  .section-divider {
+    height: 1px;
+    background: #25262f;
+    margin: 0 20px;
+  }
+
+  .control-section { padding: 16px 20px; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555869;
+    margin-bottom: 12px;
+  }
+  .ctrl { margin-bottom: 14px; }
+  .ctrl:last-child { margin-bottom: 0; }
+  .ctrl label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #a1a5b5;
+    margin-bottom: 5px;
+  }
+
+  /* Text Input */
+  .ctrl input[type="text"],
+  .ctrl select {
+    width: 100%;
+    background: #111218;
+    border: 1px solid #2a2b36;
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 13px;
+    color: #e2e8f0;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .ctrl input[type="text"]:focus,
+  .ctrl select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+  }
+  .ctrl select {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+
+  /* Color Input */
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .color-swatch {
+    position: relative;
+    width: 36px;
+    height: 32px;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 2px solid #2a2b36;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .color-swatch:hover { border-color: #6366f1; }
+  .color-swatch input[type="color"] {
+    position: absolute;
+    top: -6px; left: -6px;
+    width: 50px; height: 46px;
+    border: none;
+    cursor: pointer;
+    background: none;
+  }
+  .color-hex-display {
+    flex: 1;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: #7c819a;
+    background: #111218;
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: 1px solid #2a2b36;
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+
+  /* Range Slider */
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .range-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #2a2b36;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .range-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #6366f1;
+    border-radius: 50%;
+    border: 2px solid #1a1b23;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+  }
+  .range-row input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  .range-val {
+    font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: #7c819a;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* Drop Zone */
+  .drop-zone {
+    border: 2px dashed #33343f;
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #111218;
+    position: relative;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .drop-zone:hover,
+  .drop-zone.drag-over {
+    border-color: #6366f1;
+    background: rgba(99,102,241,0.04);
+  }
+  .drop-zone.has-image {
+    border-style: solid;
+    border-color: #4ade80;
+    padding: 8px;
+  }
+  .drop-zone .dz-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    opacity: 0.4;
+    line-height: 1;
+  }
+  .drop-zone .dz-text {
+    font-size: 11px;
+    color: #555869;
+    line-height: 1.5;
+  }
+  .drop-zone .dz-text strong { color: #6366f1; }
+  .drop-zone .dz-thumb {
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+    max-height: 100px;
+    object-fit: cover;
+  }
+  .drop-zone .dz-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(239,68,68,0.85);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .drop-zone input[type="file"] { display: none; }
+
+  /* ===== RIGHT PANEL ===== */
+  .right-panel {
+    flex: 1;
+    overflow-y: auto;
+    height: 100vh;
+    padding: 28px 24px;
+    background: #0f1117;
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .preview-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .preview-card-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8b8fa3;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .preview-card-label .dim {
+    font-weight: 400;
+    color: #4b4f63;
+    font-size: 10px;
+    margin-left: 5px;
+  }
+
+  /* ===== iPHONE FRAME ===== */
+  .iphone-frame {
+    background: #0a0a0a;
+    border: 3px solid #222;
+    border-radius: 40px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 12px 40px rgba(0,0,0,0.55);
+  }
+  .iphone-notch {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72px;
+    height: 20px;
+    background: #0a0a0a;
+    border-radius: 0 0 14px 14px;
+    z-index: 30;
+  }
+  .iphone-notch::after {
+    content: '';
+    position: absolute;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    border: 1px solid #333;
+    top: 6px;
+    right: 12px;
+  }
+  .iphone-home {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    z-index: 30;
+  }
+  .iphone-screen {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ----- Feed Frame ----- */
+  .feed-phone {
+    width: 272px;
+    height: 510px;
+  }
+  .feed-phone .iphone-screen {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* IG Header */
+  .ig-topbar {
+    flex-shrink: 0;
+    background: #000;
+    padding: 34px 12px 7px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ig-topbar .ig-logo {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    font-family: inherit;
+    letter-spacing: -0.02em;
+  }
+  .ig-topbar .ig-icons { margin-left: auto; display: flex; gap: 14px; }
+  .ig-topbar .ig-icons svg { width: 17px; height: 17px; }
+
+  /* Post Header */
+  .ig-post-head {
+    flex-shrink: 0;
+    background: #000;
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ig-pfp {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .ig-pfp-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #333;
+    border: 1.5px solid #000;
+  }
+  .ig-meta-name { font-size: 11px; font-weight: 600; color: #fff; }
+  .ig-meta-label { font-size: 9px; color: #8e8e8e; }
+  .ig-dots { margin-left: auto; color: #fff; font-size: 14px; letter-spacing: 2px; }
+
+  /* Feed Creative */
+  .feed-creative {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .feed-creative .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .feed-creative .ov { position: absolute; inset: 0; }
+  .feed-creative .ct {
+    position: relative; z-index: 3;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 16px 14px;
+    text-align: center;
+  }
+
+  /* Feed Actions */
+  .ig-actions {
+    flex-shrink: 0;
+    background: #000;
+    padding: 8px 12px 4px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+  }
+  .ig-actions svg { width: 19px; height: 19px; stroke: #fff; fill: none; stroke-width: 1.8; }
+  .ig-actions .bm { margin-left: auto; }
+  .ig-likes {
+    flex-shrink: 0;
+    background: #000;
+    padding: 2px 12px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  /* ----- Story Frame ----- */
+  .story-phone {
+    width: 195px;
+    height: 410px;
+  }
+  .story-phone .iphone-screen {
+    display: flex;
+    flex-direction: column;
+  }
+  .story-creative {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-creative .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .story-creative .ov { position: absolute; inset: 0; }
+
+  .story-progress {
+    position: relative; z-index: 10;
+    display: flex; gap: 2px;
+    padding: 34px 8px 0;
+  }
+  .story-progress .bar {
+    flex: 1; height: 2px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .story-progress .bar.active::after {
+    content: '';
+    display: block;
+    width: 55%;
+    height: 100%;
+    background: #fff;
+    border-radius: 1px;
+  }
+  .story-head {
+    position: relative; z-index: 10;
+    display: flex; align-items: center;
+    padding: 8px 8px 0; gap: 6px;
+  }
+  .story-pfp {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    padding: 1.5px;
+    flex-shrink: 0;
+  }
+  .story-pfp-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #555;
+    border: 1.5px solid #000;
+  }
+  .story-meta-name {
+    font-size: 9px; font-weight: 600; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .story-meta-label {
+    font-size: 8px; color: rgba(255,255,255,0.65);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .story-ct {
+    position: relative; z-index: 5;
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .story-bottom {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 0 0 20px;
+  }
+  .story-chevron {
+    display: block;
+    margin: 0 auto 1px;
+    width: 18px; height: 18px;
+    stroke: #fff; fill: none; stroke-width: 2.5;
+    animation: bup 1.4s ease-in-out infinite;
+  }
+  @keyframes bup {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  .story-swipe-text {
+    font-size: 8px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    letter-spacing: 0.04em;
+  }
+
+  /* ----- GDN Previews ----- */
+  .gdn-wrap {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    border: 1px solid #25262f;
+  }
+  .gdn-wrap .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .gdn-wrap .ov { position: absolute; inset: 0; }
+  .gdn-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: rgba(255,255,255,0.82);
+    color: #444;
+    font-size: 7px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 2px;
+    z-index: 10;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .gdn-ct {
+    position: relative; z-index: 3;
+    width: 100%; height: 100%;
+  }
+
+  /* MREC */
+  .gdn-mrec { width: 300px; height: 250px; }
+  .gdn-mrec .gdn-ct {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px 16px;
+    text-align: center;
+  }
+
+  /* Leaderboard */
+  .gdn-leader { width: 100%; max-width: 546px; aspect-ratio: 728/90; }
+  .gdn-leader .gdn-ct {
+    display: flex; flex-direction: row;
+    align-items: center; justify-content: space-between;
+    padding: 8px 16px;
+  }
+  .gdn-leader .txt-side {
+    flex: 1; min-width: 0;
+    padding-right: 12px;
+  }
+
+  /* ===== Common Preview Elements ===== */
+  .p-hl {
+    font-weight: 700;
+    line-height: 1.3;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    transition: color 0.15s, font-size 0.15s, font-family 0.15s;
+  }
+  .p-sc {
+    line-height: 1.45;
+    opacity: 0.85;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    transition: color 0.15s, font-size 0.15s, font-family 0.15s;
+  }
+  .p-cta {
+    display: inline-block;
+    font-weight: 700;
+    border: none;
+    cursor: default;
+    white-space: nowrap;
+    transition: color 0.15s, background-color 0.15s, font-family 0.15s;
+  }
+
+  /* Responsive */
+  @media (max-width: 1400px) {
+    .preview-grid { gap: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ===== LEFT PANEL ===== -->
+  <aside class="left-panel" id="leftPanel">
+    <div class="panel-header">
+      <h1>배너 시안 미리보기</h1>
+      <p>실시간으로 모든 포맷을 동시에 확인하세요</p>
+    </div>
+
+    <!-- Text -->
+    <div class="control-section">
+      <div class="section-label">텍스트</div>
+      <div class="ctrl">
+        <label for="inp-hl">헤드라인</label>
+        <input type="text" id="inp-hl" value="봄 맞이 특별 할인" spellcheck="false">
+      </div>
+      <div class="ctrl">
+        <label for="inp-sc">서브카피</label>
+        <input type="text" id="inp-sc" value="지금 바로 만나보세요" spellcheck="false">
+      </div>
+      <div class="ctrl">
+        <label for="inp-cta">CTA 문구</label>
+        <input type="text" id="inp-cta" value="자세히 보기" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Colors -->
+    <div class="control-section">
+      <div class="section-label">색상</div>
+      <div class="ctrl">
+        <label>배경색</label>
+        <div class="color-row">
+          <div class="color-swatch"><input type="color" id="col-bg" value="#1a1a2e"></div>
+          <div class="color-hex-display" id="hex-bg">#1a1a2e</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>텍스트 색상</label>
+        <div class="color-row">
+          <div class="color-swatch"><input type="color" id="col-txt" value="#ffffff"></div>
+          <div class="color-hex-display" id="hex-txt">#ffffff</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>CTA 배경색</label>
+        <div class="color-row">
+          <div class="color-swatch"><input type="color" id="col-cta" value="#e94560"></div>
+          <div class="color-hex-display" id="hex-cta">#e94560</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Typography -->
+    <div class="control-section">
+      <div class="section-label">타이포그래피</div>
+      <div class="ctrl">
+        <label>폰트 크기 - 헤드라인</label>
+        <div class="range-row">
+          <input type="range" id="rng-hl" min="16" max="48" value="28">
+          <div class="range-val" id="val-hl">28px</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>폰트 크기 - 서브카피</label>
+        <div class="range-row">
+          <input type="range" id="rng-sc" min="10" max="32" value="16">
+          <div class="range-val" id="val-sc">16px</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label for="sel-font">폰트 종류</label>
+        <select id="sel-font">
+          <option value="'Pretendard', sans-serif" selected>Pretendard</option>
+          <option value="'Noto Sans KR', sans-serif">Noto Sans KR</option>
+          <option value="'Black Han Sans', sans-serif">Black Han Sans</option>
+          <option value="'Nanum Gothic', sans-serif">Nanum Gothic</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Background Image -->
+    <div class="control-section">
+      <div class="section-label">배경 이미지</div>
+      <div class="ctrl">
+        <label>배경 이미지 업로드</label>
+        <div class="drop-zone" id="drop-zone">
+          <div id="dz-default">
+            <div class="dz-icon">&#128247;</div>
+            <div class="dz-text">이미지를 여기에 드래그하거나<br><strong>클릭하여 업로드</strong></div>
+          </div>
+          <input type="file" id="file-input" accept="image/*">
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>오버레이 투명도</label>
+        <div class="range-row">
+          <input type="range" id="rng-ov" min="0" max="100" value="40">
+          <div class="range-val" id="val-ov">40%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:24px;"></div>
+  </aside>
+
+  <!-- ===== RIGHT PANEL ===== -->
+  <main class="right-panel" id="rightPanel">
+    <div class="preview-grid">
+
+      <!-- 1. Meta Feed -->
+      <div class="preview-card">
+        <div class="preview-card-label">Meta 피드<span class="dim">1080 x 1080</span></div>
+        <div class="iphone-frame feed-phone">
+          <div class="iphone-notch"></div>
+          <div class="iphone-screen">
+            <div class="ig-topbar">
+              <div class="ig-logo">Instagram</div>
+              <div class="ig-icons">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </div>
+            </div>
+            <div class="ig-post-head">
+              <div class="ig-pfp"><div class="ig-pfp-inner"></div></div>
+              <div>
+                <div class="ig-meta-name">advertiser</div>
+                <div class="ig-meta-label">광고</div>
+              </div>
+              <div class="ig-dots">...</div>
+            </div>
+            <div class="feed-creative" id="pv-feed">
+              <div class="bg" id="pv-feed-bg"></div>
+              <div class="ov" id="pv-feed-ov"></div>
+              <div class="ct">
+                <div class="p-hl" id="pv-feed-hl" style="margin-bottom:5px;"></div>
+                <div class="p-sc" id="pv-feed-sc" style="margin-bottom:10px;"></div>
+                <div class="p-cta" id="pv-feed-cta" style="padding:6px 16px;border-radius:6px;font-size:11px;"></div>
+              </div>
+            </div>
+            <div class="ig-actions">
+              <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" stroke="#fff" stroke-width="1.8"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="none" stroke="#fff" stroke-width="1.8"/></svg>
+              <svg class="bm" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="ig-likes">좋아요 128개</div>
+          </div>
+          <div class="iphone-home"></div>
+        </div>
+      </div>
+
+      <!-- 2. Meta Stories -->
+      <div class="preview-card">
+        <div class="preview-card-label">Meta 스토리즈<span class="dim">1080 x 1920</span></div>
+        <div class="iphone-frame story-phone">
+          <div class="iphone-notch"></div>
+          <div class="iphone-screen">
+            <div class="story-creative" id="pv-story">
+              <div class="bg" id="pv-story-bg"></div>
+              <div class="ov" id="pv-story-ov"></div>
+              <div class="story-progress">
+                <div class="bar active"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+              </div>
+              <div class="story-head">
+                <div class="story-pfp"><div class="story-pfp-inner"></div></div>
+                <div>
+                  <div class="story-meta-name">광고주명</div>
+                  <div class="story-meta-label">광고</div>
+                </div>
+              </div>
+              <div class="story-ct">
+                <div class="p-hl" id="pv-story-hl" style="margin-bottom:4px;text-shadow:0 2px 10px rgba(0,0,0,0.35);"></div>
+                <div class="p-sc" id="pv-story-sc" style="margin-bottom:10px;text-shadow:0 1px 6px rgba(0,0,0,0.3);"></div>
+                <div class="p-cta" id="pv-story-cta" style="padding:6px 18px;border-radius:20px;font-size:10px;box-shadow:0 3px 12px rgba(0,0,0,0.25);"></div>
+              </div>
+              <div class="story-bottom">
+                <svg class="story-chevron" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+                <div class="story-swipe-text">위로 스와이프</div>
+              </div>
+            </div>
+          </div>
+          <div class="iphone-home"></div>
+        </div>
+      </div>
+
+      <!-- 3. GDN 300x250 -->
+      <div class="preview-card">
+        <div class="preview-card-label">GDN 배너<span class="dim">300 x 250</span></div>
+        <div class="gdn-wrap gdn-mrec" id="pv-mrec">
+          <div class="bg" id="pv-mrec-bg"></div>
+          <div class="ov" id="pv-mrec-ov"></div>
+          <div class="gdn-badge">Ad</div>
+          <div class="gdn-ct">
+            <div class="p-hl" id="pv-mrec-hl" style="margin-bottom:5px;"></div>
+            <div class="p-sc" id="pv-mrec-sc" style="margin-bottom:10px;"></div>
+            <div class="p-cta" id="pv-mrec-cta" style="padding:7px 20px;border-radius:6px;font-size:12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. GDN 728x90 -->
+      <div class="preview-card">
+        <div class="preview-card-label">GDN 리더보드<span class="dim">728 x 90</span></div>
+        <div class="gdn-wrap gdn-leader" id="pv-leader">
+          <div class="bg" id="pv-leader-bg"></div>
+          <div class="ov" id="pv-leader-ov"></div>
+          <div class="gdn-badge">Ad</div>
+          <div class="gdn-ct">
+            <div class="txt-side">
+              <div class="p-hl" id="pv-leader-hl" style="margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              <div class="p-sc" id="pv-leader-sc" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+            </div>
+            <div class="p-cta" id="pv-leader-cta" style="padding:7px 20px;border-radius:6px;font-size:11px;flex-shrink:0;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  // --- Input refs ---
+  const I = {
+    hl: $('inp-hl'),
+    sc: $('inp-sc'),
+    cta: $('inp-cta'),
+    colBg: $('col-bg'),
+    colTxt: $('col-txt'),
+    colCta: $('col-cta'),
+    rngHl: $('rng-hl'),
+    rngSc: $('rng-sc'),
+    rngOv: $('rng-ov'),
+    font: $('sel-font'),
+    file: $('file-input'),
+  };
+
+  // --- Preview refs ---
+  // Format: [bg, ov, hl, sc, cta, container]
+  const P = {
+    feed:   { bg: $('pv-feed-bg'),   ov: $('pv-feed-ov'),   hl: $('pv-feed-hl'),   sc: $('pv-feed-sc'),   cta: $('pv-feed-cta'),   box: $('pv-feed') },
+    story:  { bg: $('pv-story-bg'),  ov: $('pv-story-ov'),  hl: $('pv-story-hl'),  sc: $('pv-story-sc'),  cta: $('pv-story-cta'),  box: $('pv-story') },
+    mrec:   { bg: $('pv-mrec-bg'),   ov: $('pv-mrec-ov'),   hl: $('pv-mrec-hl'),   sc: $('pv-mrec-sc'),   cta: $('pv-mrec-cta'),   box: $('pv-mrec') },
+    leader: { bg: $('pv-leader-bg'), ov: $('pv-leader-ov'), hl: $('pv-leader-hl'), sc: $('pv-leader-sc'), cta: $('pv-leader-cta'), box: $('pv-leader') },
+  };
+
+  let bgImage = null;
+
+  // --- Core update ---
+  function update() {
+    const hl    = I.hl.value || '\u00A0';
+    const sc    = I.sc.value || '\u00A0';
+    const cta   = I.cta.value || '\u00A0';
+    const bgCol = I.colBg.value;
+    const txCol = I.colTxt.value;
+    const ctCol = I.colCta.value;
+    const hlPx  = +I.rngHl.value;
+    const scPx  = +I.rngSc.value;
+    const ovOp  = +I.rngOv.value / 100;
+    const ff    = I.font.value;
+
+    // Update displays
+    $('hex-bg').textContent = bgCol;
+    $('hex-txt').textContent = txCol;
+    $('hex-cta').textContent = ctCol;
+    $('val-hl').textContent = hlPx + 'px';
+    $('val-sc').textContent = scPx + 'px';
+    $('val-ov').textContent = I.rngOv.value + '%';
+
+    // Scale factors:
+    // Feed creative ~248px vs 1080 => ~0.23
+    // Story creative ~189px vs 1080 => ~0.175
+    // MREC 300/300 => 1
+    // Leader display ~546px vs 728 => ~0.75
+    const scales = { feed: 0.25, story: 0.185, mrec: 1, leader: 0.75 };
+
+    Object.keys(P).forEach(key => {
+      const p = P[key];
+      const s = scales[key];
+
+      // Background
+      p.box.style.backgroundColor = bgCol;
+      if (bgImage) {
+        p.bg.style.backgroundImage = 'url(' + bgImage + ')';
+        p.ov.style.backgroundColor = 'rgba(0,0,0,' + ovOp + ')';
+      } else {
+        p.bg.style.backgroundImage = 'none';
+        p.ov.style.backgroundColor = 'transparent';
+      }
+
+      // Headline
+      p.hl.textContent = hl;
+      p.hl.style.color = txCol;
+      p.hl.style.fontFamily = ff;
+      p.hl.style.fontSize = Math.round(hlPx * s) + 'px';
+
+      // Subcopy
+      p.sc.textContent = sc;
+      p.sc.style.color = txCol;
+      p.sc.style.fontFamily = ff;
+      p.sc.style.fontSize = Math.round(scPx * s) + 'px';
+
+      // CTA
+      p.cta.textContent = cta;
+      p.cta.style.backgroundColor = ctCol;
+      p.cta.style.color = txCol;
+      p.cta.style.fontFamily = ff;
+    });
+  }
+
+  // --- Bind all inputs ---
+  [I.hl, I.sc, I.cta, I.colBg, I.colTxt, I.colCta, I.rngHl, I.rngSc, I.rngOv].forEach(el => {
+    el.addEventListener('input', update);
+  });
+  I.font.addEventListener('input', update);
+  I.font.addEventListener('change', update);
+
+  // Also sync color on 'change' for final value
+  [I.colBg, I.colTxt, I.colCta].forEach(el => {
+    el.addEventListener('change', update);
+  });
+
+  // --- Image Upload ---
+  const dz = $('drop-zone');
+  const dzDefault = $('dz-default');
+
+  dz.addEventListener('click', () => I.file.click());
+
+  dz.addEventListener('dragover', e => {
+    e.preventDefault();
+    dz.classList.add('drag-over');
+  });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) loadImage(f);
+  });
+
+  I.file.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) loadImage(f);
+  });
+
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      bgImage = e.target.result;
+      dz.classList.add('has-image');
+      // Replace inner content
+      const prev = document.createElement('div');
+      prev.style.cssText = 'position:relative;width:100%;';
+      prev.innerHTML = '<img class="dz-thumb" src="' + bgImage + '" alt="bg"><button class="dz-remove" id="dz-rm">&times;</button>';
+      dz.innerHTML = '';
+      dz.appendChild(prev);
+      // Re-add file input
+      const newInput = document.createElement('input');
+      newInput.type = 'file';
+      newInput.accept = 'image/*';
+      newInput.id = 'file-input';
+      newInput.style.display = 'none';
+      dz.appendChild(newInput);
+      I.file = newInput;
+      I.file.addEventListener('change', e2 => {
+        const f2 = e2.target.files[0];
+        if (f2) loadImage(f2);
+      });
+      $('dz-rm').addEventListener('click', e2 => {
+        e2.stopPropagation();
+        removeImage();
+      });
+      update();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    bgImage = null;
+    dz.classList.remove('has-image');
+    dz.innerHTML = '<div id="dz-default"><div class="dz-icon">&#128247;</div><div class="dz-text">이미지를 여기에 드래그하거나<br><strong>클릭하여 업로드</strong></div></div><input type="file" id="file-input" accept="image/*" style="display:none;">';
+    I.file = $('file-input');
+    I.file.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (f) loadImage(f);
+    });
+    update();
+  }
+
+  // --- Init ---
+  update();
+})();
+</script>
+</body>
+</html>

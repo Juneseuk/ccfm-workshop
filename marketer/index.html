@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>광고비 시뮬레이터 | Ad Spend Simulator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-glow: rgba(99, 102, 241, 0.3);
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --bg-primary: #0f1117;
+    --bg-secondary: #1a1d2e;
+    --bg-card: #1e2235;
+    --bg-card-hover: #252a42;
+    --border: #2a2f45;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* Slider styling */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-glow);
+    cursor: grab;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 2px var(--accent-light), 0 0 24px var(--accent-glow);
+  }
+
+  input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.3);
+    box-shadow: 0 0 0 3px var(--accent-light), 0 0 32px var(--accent-glow);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-glow);
+    cursor: grab;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  input[type="range"]::-moz-range-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.3);
+  }
+
+  /* Metric card animations */
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .metric-card:hover {
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+  }
+
+  .metric-card:hover::before {
+    opacity: 1;
+  }
+
+  .metric-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.2;
+    transition: color 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-value.updating {
+    color: var(--accent-light);
+  }
+
+  /* Tab buttons */
+  .tab-btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+
+  .tab-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-card);
+  }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent-light);
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+
+  /* Preset buttons */
+  .preset-btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .preset-btn.active-preset {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-light);
+  }
+
+  /* Scenario buttons */
+  .scenario-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--accent);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent-light);
+  }
+
+  .scenario-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    transform: translateY(-1px);
+  }
+
+  /* Slider group */
+  .slider-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    transition: border-color 0.2s;
+  }
+
+  .slider-group:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .slider-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent-light);
+    font-variant-numeric: tabular-nums;
+    min-width: 140px;
+    text-align: right;
+  }
+
+  .slider-range {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Comparison panel */
+  .comparison-panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .comparison-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid;
+  }
+
+  .comparison-label.scenario-a {
+    color: var(--accent-light);
+    border-color: var(--accent);
+  }
+
+  .comparison-label.scenario-b {
+    color: var(--green);
+    border-color: var(--green);
+  }
+
+  .comparison-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(42, 47, 69, 0.5);
+  }
+
+  .comparison-row:last-child { border-bottom: none; }
+
+  .delta-positive { color: var(--green); }
+  .delta-negative { color: var(--red); }
+
+  /* Feasibility indicator */
+  .feasibility-indicator {
+    border-radius: 14px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .feasibility-green {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--green);
+  }
+
+  .feasibility-yellow {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: var(--yellow);
+  }
+
+  .feasibility-red {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--red);
+  }
+
+  .feasibility-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  /* Reverse mode input */
+  .reverse-input {
+    background: var(--bg-card);
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+
+  .reverse-input input[type="number"] {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .reverse-input input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .reverse-input input[type="number"]::-webkit-inner-spin-button,
+  .reverse-input input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0.5;
+  }
+
+  /* Chart container */
+  .chart-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+  }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  /* Number input for reverse mode */
+  input[type="number"] { -moz-appearance: textfield; }
+
+  /* Hidden tab */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .metric-value { font-size: 1.3rem; }
+    .slider-value { font-size: 0.95rem; min-width: 100px; }
+  }
+</style>
+</head>
+<body>
+<div class="min-h-screen p-4 md:p-8 max-w-7xl mx-auto">
+
+  <!-- Header -->
+  <header class="mb-8 animate-in">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">광고비 시뮬레이터</h1>
+        </div>
+        <p class="text-sm" style="color:var(--text-muted)">슬라이더를 움직여 광고 성과를 실시간으로 시뮬레이션하세요</p>
+      </div>
+
+      <!-- Tab navigation -->
+      <div class="flex gap-2 p-1.5 rounded-xl" style="background:var(--bg-secondary)">
+        <button class="tab-btn active" onclick="switchTab('simulator')">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            시뮬레이터
+          </span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('reverse')">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            역산 모드
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== TAB 1: SIMULATOR ==================== -->
+  <div id="tab-simulator" class="tab-content active">
+
+    <!-- Preset buttons -->
+    <div class="flex flex-wrap items-center gap-3 mb-6 animate-in" style="animation-delay:0.05s">
+      <span class="text-xs font-semibold uppercase tracking-wider" style="color:var(--text-muted)">프리셋</span>
+      <button class="preset-btn" onclick="applyPreset('conservative')">
+        <span class="flex items-center gap-1.5">
+          <span style="color:var(--green)">&#9679;</span> 보수적
+        </span>
+      </button>
+      <button class="preset-btn" onclick="applyPreset('neutral')">
+        <span class="flex items-center gap-1.5">
+          <span style="color:var(--yellow)">&#9679;</span> 중립
+        </span>
+      </button>
+      <button class="preset-btn" onclick="applyPreset('aggressive')">
+        <span class="flex items-center gap-1.5">
+          <span style="color:var(--red)">&#9679;</span> 공격적
+        </span>
+      </button>
+      <div class="flex-1"></div>
+      <button class="scenario-btn" onclick="saveScenarioA()">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+          현재값 저장 (A)
+        </span>
+      </button>
+      <button class="scenario-btn" id="btn-compare" onclick="toggleComparison()" style="opacity:0.4;pointer-events:none">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+          비교하기
+        </span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left column: Sliders -->
+      <div class="lg:col-span-5 space-y-4 animate-in" style="animation-delay:0.1s">
+
+        <!-- 일예산 -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">일예산</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Daily Budget</span>
+            </div>
+            <span class="slider-value" id="val-budget"></span>
+          </div>
+          <input type="range" id="slider-budget" min="100000" max="5000000" step="100000" value="1000000">
+          <div class="slider-range"><span>10만원</span><span>500만원</span></div>
+        </div>
+
+        <!-- CPC -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">CPC</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Cost Per Click</span>
+            </div>
+            <span class="slider-value" id="val-cpc"></span>
+          </div>
+          <input type="range" id="slider-cpc" min="100" max="5000" step="50" value="500">
+          <div class="slider-range"><span>100원</span><span>5,000원</span></div>
+        </div>
+
+        <!-- 전환율 -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">전환율</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Conversion Rate</span>
+            </div>
+            <span class="slider-value" id="val-cvr"></span>
+          </div>
+          <input type="range" id="slider-cvr" min="0.1" max="10" step="0.1" value="2">
+          <div class="slider-range"><span>0.1%</span><span>10%</span></div>
+        </div>
+
+        <!-- 객단가 -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">객단가</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Avg Order Value</span>
+            </div>
+            <span class="slider-value" id="val-aov"></span>
+          </div>
+          <input type="range" id="slider-aov" min="10000" max="500000" step="10000" value="50000">
+          <div class="slider-range"><span>1만원</span><span>50만원</span></div>
+        </div>
+      </div>
+
+      <!-- Right column: Results -->
+      <div class="lg:col-span-7 space-y-6 animate-in" style="animation-delay:0.15s">
+
+        <!-- Metric cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">일클릭수</div>
+            <div class="metric-value" id="metric-clicks">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Daily Clicks</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">일전환수</div>
+            <div class="metric-value" id="metric-conversions">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Daily Conversions</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">일매출</div>
+            <div class="metric-value" id="metric-daily-revenue">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Daily Revenue</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">월매출</div>
+            <div class="metric-value" id="metric-monthly-revenue" style="color:#a78bfa">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Monthly Revenue</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">ROAS</div>
+            <div class="metric-value" id="metric-roas">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Return on Ad Spend</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">손익분기 CPC</div>
+            <div class="metric-value" id="metric-breakeven-cpc">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Break-even CPC</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+          <canvas id="mainChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison section -->
+    <div id="comparison-section" class="mt-8 hidden animate-in">
+      <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" style="color:var(--accent-light)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
+        시나리오 비교: 현재 (A) vs 목표 (B)
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Scenario A -->
+        <div class="comparison-panel">
+          <div class="comparison-label scenario-a">시나리오 A (저장됨)</div>
+          <div id="comparison-a-content"></div>
+        </div>
+        <!-- Scenario B -->
+        <div class="comparison-panel">
+          <div class="comparison-label scenario-b">시나리오 B (현재)</div>
+          <div id="comparison-b-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: REVERSE MODE ==================== -->
+  <div id="tab-reverse" class="tab-content">
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left column: Inputs -->
+      <div class="lg:col-span-5 space-y-4 animate-in">
+
+        <!-- Target monthly revenue -->
+        <div class="reverse-input">
+          <div class="flex items-center gap-2 mb-3">
+            <svg class="w-5 h-5" style="color:var(--accent-light)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <span class="text-sm font-bold" style="color:var(--accent-light)">목표 월매출</span>
+            <span class="text-xs" style="color:var(--text-muted)">Target Monthly Revenue</span>
+          </div>
+          <div class="relative">
+            <input type="number" id="reverse-target" value="50000000" min="1000000" step="1000000" placeholder="목표 월매출 입력">
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold" style="color:var(--text-muted)">원</span>
+          </div>
+          <div class="text-xs mt-2" style="color:var(--text-muted)">현재: <span id="reverse-target-display">50,000,000원</span></div>
+        </div>
+
+        <!-- CPC slider (reverse) -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">CPC</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Cost Per Click</span>
+            </div>
+            <span class="slider-value" id="rev-val-cpc"></span>
+          </div>
+          <input type="range" id="rev-slider-cpc" min="100" max="5000" step="50" value="500">
+          <div class="slider-range"><span>100원</span><span>5,000원</span></div>
+        </div>
+
+        <!-- 객단가 slider (reverse) -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">객단가</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Avg Order Value</span>
+            </div>
+            <span class="slider-value" id="rev-val-aov"></span>
+          </div>
+          <input type="range" id="rev-slider-aov" min="10000" max="500000" step="10000" value="50000">
+          <div class="slider-range"><span>1만원</span><span>50만원</span></div>
+        </div>
+
+        <!-- 전환율 slider (reverse) -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <div>
+              <span class="text-sm font-semibold" style="color:var(--text-primary)">전환율</span>
+              <span class="text-xs ml-1.5" style="color:var(--text-muted)">Conversion Rate</span>
+            </div>
+            <span class="slider-value" id="rev-val-cvr"></span>
+          </div>
+          <input type="range" id="rev-slider-cvr" min="0.1" max="10" step="0.1" value="2">
+          <div class="slider-range"><span>0.1%</span><span>10%</span></div>
+        </div>
+      </div>
+
+      <!-- Right column: Calculated requirements -->
+      <div class="lg:col-span-7 space-y-6 animate-in" style="animation-delay:0.1s">
+
+        <!-- Feasibility indicator -->
+        <div class="feasibility-indicator" id="feasibility-indicator">
+          <div class="feasibility-dot"></div>
+          <span id="feasibility-text">분석 중...</span>
+        </div>
+
+        <!-- Calculated metrics -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">필요 일예산</div>
+            <div class="metric-value" id="rev-metric-budget" style="color:#f472b6">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Required Daily Budget</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">필요 일클릭수</div>
+            <div class="metric-value" id="rev-metric-clicks">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Required Daily Clicks</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">필요 일전환수</div>
+            <div class="metric-value" id="rev-metric-conversions">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Required Daily Conversions</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">필요 일매출</div>
+            <div class="metric-value" id="rev-metric-daily-revenue">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Required Daily Revenue</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">예상 ROAS</div>
+            <div class="metric-value" id="rev-metric-roas">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Expected ROAS</div>
+          </div>
+          <div class="metric-card">
+            <div class="text-xs font-semibold uppercase tracking-wider mb-2" style="color:var(--text-muted)">필요 월광고비</div>
+            <div class="metric-value" id="rev-metric-monthly-cost" style="color:#fb923c">-</div>
+            <div class="text-xs mt-1" style="color:var(--text-muted)">Required Monthly Ad Spend</div>
+          </div>
+        </div>
+
+        <!-- Reverse chart -->
+        <div class="chart-container">
+          <canvas id="reverseChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+let scenarioA = null;
+
+// ==================== FORMATTING ====================
+function formatWon(n) {
+  if (n >= 100000000) {
+    const eok = n / 100000000;
+    return (eok % 1 === 0 ? eok.toFixed(0) : eok.toFixed(1)) + '억원';
+  }
+  if (n >= 10000) {
+    const man = n / 10000;
+    return (man % 1 === 0 ? man.toFixed(0) : man.toFixed(1)) + '만원';
+  }
+  return n.toLocaleString('ko-KR') + '원';
+}
+
+function formatWonFull(n) {
+  return n.toLocaleString('ko-KR') + '원';
+}
+
+function formatNumber(n) {
+  if (n >= 10000) {
+    return (n / 10000).toFixed(1) + '만';
+  }
+  return n % 1 === 0 ? n.toLocaleString('ko-KR') : n.toFixed(1);
+}
+
+function formatPercent(n) {
+  return n.toFixed(1) + '%';
+}
+
+// ==================== SLIDER GRADIENT FILL ====================
+function updateSliderFill(slider) {
+  const min = parseFloat(slider.min);
+  const max = parseFloat(slider.max);
+  const val = parseFloat(slider.value);
+  const pct = ((val - min) / (max - min)) * 100;
+  slider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border) ${pct}%, var(--border) 100%)`;
+}
+
+// ==================== TAB 1: FORWARD CALCULATIONS ====================
+const sliderBudget = document.getElementById('slider-budget');
+const sliderCpc = document.getElementById('slider-cpc');
+const sliderCvr = document.getElementById('slider-cvr');
+const sliderAov = document.getElementById('slider-aov');
+
+function getForwardValues() {
+  return {
+    budget: parseInt(sliderBudget.value),
+    cpc: parseInt(sliderCpc.value),
+    cvr: parseFloat(sliderCvr.value),
+    aov: parseInt(sliderAov.value),
+  };
+}
+
+function calculateForward(v) {
+  const dailyClicks = v.budget / v.cpc;
+  const dailyConversions = dailyClicks * (v.cvr / 100);
+  const dailyRevenue = dailyConversions * v.aov;
+  const monthlyRevenue = dailyRevenue * 30;
+  const monthlySpend = v.budget * 30;
+  const roas = monthlySpend > 0 ? (monthlyRevenue / monthlySpend) * 100 : 0;
+  const breakevenCpc = v.aov * (v.cvr / 100);
+  return { dailyClicks, dailyConversions, dailyRevenue, monthlyRevenue, monthlySpend, roas, breakevenCpc };
+}
+
+function updateForward() {
+  const v = getForwardValues();
+  const r = calculateForward(v);
+
+  // Update slider values
+  document.getElementById('val-budget').textContent = formatWonFull(v.budget);
+  document.getElementById('val-cpc').textContent = formatWonFull(v.cpc);
+  document.getElementById('val-cvr').textContent = formatPercent(v.cvr);
+  document.getElementById('val-aov').textContent = formatWonFull(v.aov);
+
+  // Update slider fills
+  updateSliderFill(sliderBudget);
+  updateSliderFill(sliderCpc);
+  updateSliderFill(sliderCvr);
+  updateSliderFill(sliderAov);
+
+  // Update metric cards with animation
+  animateMetric('metric-clicks', formatNumber(r.dailyClicks));
+  animateMetric('metric-conversions', r.dailyConversions.toFixed(1) + '건');
+  animateMetric('metric-daily-revenue', formatWon(r.dailyRevenue));
+  animateMetric('metric-monthly-revenue', formatWon(r.monthlyRevenue));
+
+  // ROAS coloring
+  const roasEl = document.getElementById('metric-roas');
+  const roasValue = r.roas;
+  roasEl.textContent = roasValue.toFixed(0) + '%';
+  if (roasValue >= 300) roasEl.style.color = 'var(--green)';
+  else if (roasValue >= 100) roasEl.style.color = 'var(--yellow)';
+  else roasEl.style.color = 'var(--red)';
+
+  // Break-even CPC coloring
+  const becEl = document.getElementById('metric-breakeven-cpc');
+  becEl.textContent = formatWonFull(Math.round(r.breakevenCpc));
+  if (v.cpc <= r.breakevenCpc) becEl.style.color = 'var(--green)';
+  else becEl.style.color = 'var(--red)';
+
+  // Update chart
+  updateMainChart(r);
+
+  // Update comparison if visible
+  if (!document.getElementById('comparison-section').classList.contains('hidden')) {
+    updateComparison();
+  }
+}
+
+function animateMetric(id, value) {
+  const el = document.getElementById(id);
+  if (el.textContent !== value) {
+    el.textContent = value;
+    el.classList.add('updating');
+    clearTimeout(el._timeout);
+    el._timeout = setTimeout(() => el.classList.remove('updating'), 200);
+  }
+}
+
+// Attach listeners to forward sliders
+[sliderBudget, sliderCpc, sliderCvr, sliderAov].forEach(s => {
+  s.addEventListener('input', updateForward);
+});
+
+// ==================== CHART (FORWARD) ====================
+let mainChart;
+
+function initMainChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  mainChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['일예산', '일매출', '월광고비', '월매출'],
+      datasets: [{
+        label: '금액',
+        data: [0, 0, 0, 0],
+        backgroundColor: [
+          'rgba(99, 102, 241, 0.7)',
+          'rgba(129, 140, 248, 0.7)',
+          'rgba(244, 114, 182, 0.7)',
+          'rgba(167, 139, 250, 0.7)',
+        ],
+        borderColor: [
+          'rgba(99, 102, 241, 1)',
+          'rgba(129, 140, 248, 1)',
+          'rgba(244, 114, 182, 1)',
+          'rgba(167, 139, 250, 1)',
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(30, 34, 53, 0.95)',
+          borderColor: 'rgba(99, 102, 241, 0.3)',
+          borderWidth: 1,
+          titleColor: '#f1f5f9',
+          bodyColor: '#94a3b8',
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: function(ctx) {
+              return formatWonFull(Math.round(ctx.raw));
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', font: { weight: '600' } },
+          grid: { display: false },
+          border: { display: false }
+        },
+        y: {
+          ticks: {
+            color: '#64748b',
+            callback: function(v) { return formatWon(v); }
+          },
+          grid: { color: 'rgba(42, 47, 69, 0.5)' },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function updateMainChart(r) {
+  if (!mainChart) return;
+  const v = getForwardValues();
+  mainChart.data.datasets[0].data = [
+    v.budget,
+    r.dailyRevenue,
+    r.monthlySpend,
+    r.monthlyRevenue,
+  ];
+  mainChart.update('none');
+}
+
+// ==================== PRESETS ====================
+const presets = {
+  conservative: { budget: 500000, cpc: 800, cvr: 1.0, aov: 30000 },
+  neutral:      { budget: 1500000, cpc: 500, cvr: 2.5, aov: 50000 },
+  aggressive:   { budget: 3000000, cpc: 300, cvr: 5.0, aov: 80000 },
+};
+
+function applyPreset(name) {
+  const p = presets[name];
+  sliderBudget.value = p.budget;
+  sliderCpc.value = p.cpc;
+  sliderCvr.value = p.cvr;
+  sliderAov.value = p.aov;
+  updateForward();
+
+  // Highlight active preset button
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active-preset'));
+  event.currentTarget.classList.add('active-preset');
+}
+
+// ==================== SCENARIOS ====================
+function saveScenarioA() {
+  const v = getForwardValues();
+  const r = calculateForward(v);
+  scenarioA = { values: v, results: r };
+
+  // Enable compare button
+  const btn = document.getElementById('btn-compare');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+
+  // Visual feedback
+  btn.textContent = '';
+  btn.innerHTML = '<span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> 저장됨! 비교하기</span>';
+}
+
+function toggleComparison() {
+  const sec = document.getElementById('comparison-section');
+  if (sec.classList.contains('hidden')) {
+    sec.classList.remove('hidden');
+    updateComparison();
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    sec.classList.add('hidden');
+  }
+}
+
+function updateComparison() {
+  if (!scenarioA) return;
+
+  const currentV = getForwardValues();
+  const currentR = calculateForward(currentV);
+
+  const rows = [
+    { label: '일예산', a: formatWonFull(scenarioA.values.budget), b: formatWonFull(currentV.budget), aVal: scenarioA.values.budget, bVal: currentV.budget },
+    { label: 'CPC', a: formatWonFull(scenarioA.values.cpc), b: formatWonFull(currentV.cpc), aVal: scenarioA.values.cpc, bVal: currentV.cpc, inverse: true },
+    { label: '전환율', a: formatPercent(scenarioA.values.cvr), b: formatPercent(currentV.cvr), aVal: scenarioA.values.cvr, bVal: currentV.cvr },
+    { label: '객단가', a: formatWonFull(scenarioA.values.aov), b: formatWonFull(currentV.aov), aVal: scenarioA.values.aov, bVal: currentV.aov },
+    { label: '월매출', a: formatWon(scenarioA.results.monthlyRevenue), b: formatWon(currentR.monthlyRevenue), aVal: scenarioA.results.monthlyRevenue, bVal: currentR.monthlyRevenue },
+    { label: 'ROAS', a: scenarioA.results.roas.toFixed(0) + '%', b: currentR.roas.toFixed(0) + '%', aVal: scenarioA.results.roas, bVal: currentR.roas },
+  ];
+
+  function renderPanel(containerId, side) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = rows.map(r => {
+      const val = side === 'a' ? r.a : r.b;
+      const aVal = r.aVal;
+      const bVal = r.bVal;
+      let delta = '';
+      if (side === 'b' && aVal !== bVal) {
+        const diff = bVal - aVal;
+        const pct = aVal !== 0 ? ((diff / aVal) * 100).toFixed(1) : '0';
+        const isPositive = r.inverse ? diff < 0 : diff > 0;
+        const cls = isPositive ? 'delta-positive' : 'delta-negative';
+        const arrow = diff > 0 ? '&#9650;' : '&#9660;';
+        delta = `<span class="${cls}" style="font-size:0.75rem;font-weight:600">${arrow} ${Math.abs(pct)}%</span>`;
+      }
+      return `<div class="comparison-row">
+        <span style="color:var(--text-muted);font-size:0.85rem">${r.label}</span>
+        <div class="flex items-center gap-2">
+          <span style="font-weight:700;font-size:0.95rem">${val}</span>
+          ${delta}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  renderPanel('comparison-a-content', 'a');
+  renderPanel('comparison-b-content', 'b');
+}
+
+// ==================== TAB 2: REVERSE CALCULATIONS ====================
+const revTarget = document.getElementById('reverse-target');
+const revCpc = document.getElementById('rev-slider-cpc');
+const revAov = document.getElementById('rev-slider-aov');
+const revCvr = document.getElementById('rev-slider-cvr');
+
+function getReverseValues() {
+  return {
+    targetMonthly: parseInt(revTarget.value) || 0,
+    cpc: parseInt(revCpc.value),
+    aov: parseInt(revAov.value),
+    cvr: parseFloat(revCvr.value),
+  };
+}
+
+function calculateReverse(v) {
+  const dailyRevenue = v.targetMonthly / 30;
+  const dailyConversions = v.aov > 0 ? dailyRevenue / v.aov : 0;
+  const dailyClicks = v.cvr > 0 ? dailyConversions / (v.cvr / 100) : 0;
+  const dailyBudget = dailyClicks * v.cpc;
+  const monthlySpend = dailyBudget * 30;
+  const roas = monthlySpend > 0 ? (v.targetMonthly / monthlySpend) * 100 : 0;
+
+  return { dailyRevenue, dailyConversions, dailyClicks, dailyBudget, monthlySpend, roas };
+}
+
+function updateReverse() {
+  const v = getReverseValues();
+  const r = calculateReverse(v);
+
+  // Slider display values
+  document.getElementById('rev-val-cpc').textContent = formatWonFull(v.cpc);
+  document.getElementById('rev-val-aov').textContent = formatWonFull(v.aov);
+  document.getElementById('rev-val-cvr').textContent = formatPercent(v.cvr);
+  document.getElementById('reverse-target-display').textContent = formatWonFull(v.targetMonthly);
+
+  // Slider fills
+  updateSliderFill(revCpc);
+  updateSliderFill(revAov);
+  updateSliderFill(revCvr);
+
+  // Metrics
+  animateMetric('rev-metric-budget', formatWon(Math.round(r.dailyBudget)));
+  animateMetric('rev-metric-clicks', formatNumber(Math.round(r.dailyClicks)));
+  animateMetric('rev-metric-conversions', r.dailyConversions.toFixed(1) + '건');
+  animateMetric('rev-metric-daily-revenue', formatWon(Math.round(r.dailyRevenue)));
+  animateMetric('rev-metric-roas', r.roas.toFixed(0) + '%');
+  animateMetric('rev-metric-monthly-cost', formatWon(Math.round(r.monthlySpend)));
+
+  // ROAS coloring
+  const roasEl = document.getElementById('rev-metric-roas');
+  if (r.roas >= 300) roasEl.style.color = 'var(--green)';
+  else if (r.roas >= 100) roasEl.style.color = 'var(--yellow)';
+  else roasEl.style.color = 'var(--red)';
+
+  // Feasibility
+  updateFeasibility(r, v);
+
+  // Chart
+  updateReverseChart(r, v);
+}
+
+function updateFeasibility(r, v) {
+  const indicator = document.getElementById('feasibility-indicator');
+  const text = document.getElementById('feasibility-text');
+  const dot = indicator.querySelector('.feasibility-dot');
+
+  indicator.className = 'feasibility-indicator';
+
+  // Evaluate feasibility
+  let level = 'green';
+  let message = '';
+
+  if (r.dailyBudget > 5000000) {
+    level = 'red';
+    message = '일예산이 500만원을 초과합니다. 목표를 낮추거나 효율을 개선하세요.';
+  } else if (r.dailyBudget > 3000000) {
+    level = 'yellow';
+    message = '일예산이 높은 편입니다. CPC를 낮추거나 전환율을 높이는 것을 고려하세요.';
+  } else if (r.roas < 100) {
+    level = 'red';
+    message = 'ROAS가 100% 미만으로 적자 구조입니다. 객단가 또는 전환율 개선이 필요합니다.';
+  } else if (r.roas < 200) {
+    level = 'yellow';
+    message = 'ROAS가 낮은 편입니다. 수익 마진을 고려해 효율을 높여야 합니다.';
+  } else {
+    level = 'green';
+    message = '목표 달성이 현실적입니다. 이 조건으로 캠페인을 진행하세요.';
+  }
+
+  indicator.classList.add(`feasibility-${level}`);
+  dot.style.backgroundColor = level === 'green' ? 'var(--green)' : level === 'yellow' ? 'var(--yellow)' : 'var(--red)';
+  text.textContent = message;
+}
+
+// ==================== CHART (REVERSE) ====================
+let reverseChart;
+
+function initReverseChart() {
+  const ctx = document.getElementById('reverseChart').getContext('2d');
+  reverseChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['필요 일예산', '목표 일매출', '필요 월광고비', '목표 월매출'],
+      datasets: [{
+        label: '금액',
+        data: [0, 0, 0, 0],
+        backgroundColor: [
+          'rgba(244, 114, 182, 0.7)',
+          'rgba(129, 140, 248, 0.7)',
+          'rgba(251, 146, 60, 0.7)',
+          'rgba(167, 139, 250, 0.7)',
+        ],
+        borderColor: [
+          'rgba(244, 114, 182, 1)',
+          'rgba(129, 140, 248, 1)',
+          'rgba(251, 146, 60, 1)',
+          'rgba(167, 139, 250, 1)',
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(30, 34, 53, 0.95)',
+          borderColor: 'rgba(99, 102, 241, 0.3)',
+          borderWidth: 1,
+          titleColor: '#f1f5f9',
+          bodyColor: '#94a3b8',
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: function(ctx) {
+              return formatWonFull(Math.round(ctx.raw));
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', font: { weight: '600', size: 11 } },
+          grid: { display: false },
+          border: { display: false }
+        },
+        y: {
+          ticks: {
+            color: '#64748b',
+            callback: function(v) { return formatWon(v); }
+          },
+          grid: { color: 'rgba(42, 47, 69, 0.5)' },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function updateReverseChart(r, v) {
+  if (!reverseChart) return;
+  reverseChart.data.datasets[0].data = [
+    r.dailyBudget,
+    r.dailyRevenue,
+    r.monthlySpend,
+    v.targetMonthly,
+  ];
+  reverseChart.update('none');
+}
+
+// Attach listeners to reverse inputs
+[revCpc, revAov, revCvr].forEach(s => {
+  s.addEventListener('input', updateReverse);
+});
+
+revTarget.addEventListener('input', updateReverse);
+
+// ==================== TAB SWITCHING ====================
+function switchTab(tab) {
+  // Update buttons
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  // Update content
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+
+  // Recalculate for the active tab
+  if (tab === 'simulator') {
+    updateForward();
+    setTimeout(() => mainChart && mainChart.resize(), 50);
+  } else {
+    updateReverse();
+    setTimeout(() => reverseChart && reverseChart.resize(), 50);
+  }
+}
+
+// ==================== INIT ====================
+function init() {
+  initMainChart();
+  initReverseChart();
+  updateForward();
+  updateReverse();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

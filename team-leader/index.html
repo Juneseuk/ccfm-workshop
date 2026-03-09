@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>광고주 시그널 보드 & 리밸런싱 시뮬레이터</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #1a1d2e; }
+  ::-webkit-scrollbar-thumb { background: #3d3f5c; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52547a; }
+
+  .header-bar {
+    background: linear-gradient(135deg, #13151f 0%, #0f1117 100%);
+    border-bottom: 1px solid #1e2035;
+  }
+
+  /* Tabs */
+  .tab-btn {
+    position: relative;
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transition: color 0.25s;
+    border-radius: 8px 8px 0 0;
+  }
+  .tab-btn:hover { color: #a5b4fc; }
+  .tab-btn.active {
+    color: #c7d2fe;
+    background: rgba(99, 102, 241, 0.08);
+  }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #818cf8);
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Summary stat cards */
+  .stat-card {
+    background: #1a1d2e;
+    border: 1px solid #252840;
+    border-radius: 12px;
+    padding: 18px 20px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: #3d3f5c; }
+  .stat-number {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  /* Signal cards */
+  .signal-card {
+    background: #1a1d2e;
+    border: 1px solid #252840;
+    border-radius: 12px;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+  .signal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    border-color: #3d3f5c;
+  }
+  .signal-card.expanded {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .signal-card.danger { border-left-color: #ef4444; }
+  .signal-card.warning { border-left-color: #eab308; }
+  .signal-card.opportunity { border-left-color: #3b82f6; }
+  .signal-card.stable { border-left-color: #22c55e; }
+
+  /* Signal badges */
+  .signal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .badge-danger { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+  .badge-warning { background: rgba(234,179,8,0.12); color: #fde047; border: 1px solid rgba(234,179,8,0.25); }
+  .badge-opportunity { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
+  .badge-stable { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
+
+  /* Expand area */
+  .expand-area {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .expand-area.open {
+    max-height: 550px;
+  }
+
+  /* Change indicators */
+  .change-up { color: #22c55e; }
+  .change-down { color: #ef4444; }
+
+  /* Pulse dot */
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .pulse-dot.danger { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+  .pulse-dot.warning { background: #eab308; box-shadow: 0 0 8px rgba(234,179,8,0.5); }
+  .pulse-dot.opportunity { background: #3b82f6; box-shadow: 0 0 8px rgba(59,130,246,0.5); }
+  .pulse-dot.stable { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+
+  /* Form elements */
+  .select-custom {
+    background: #0f1117;
+    border: 1px solid #252840;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 32px 8px 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.2s;
+  }
+  .select-custom:focus { border-color: #6366f1; }
+
+  .input-custom {
+    background: #0f1117;
+    border: 1px solid #252840;
+    border-radius: 8px;
+    color: #e2e8f0;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-custom:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: white;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(99,102,241,0.4); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-reset {
+    background: rgba(239,68,68,0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.25);
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .btn-reset:hover { background: rgba(239,68,68,0.2); }
+
+  /* Comment items */
+  .comment-item {
+    background: #0f1117;
+    border: 1px solid #1e2035;
+    border-left: 3px solid #6366f1;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+  }
+
+  /* Slider */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #252840;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #6366f1;
+    cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.2), 0 2px 8px rgba(0,0,0,0.3);
+    transition: box-shadow 0.2s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 6px rgba(99,102,241,0.3), 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  /* Comparison boxes */
+  .comparison-box {
+    background: #1a1d2e;
+    border: 1px solid #252840;
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  /* Animations */
+  .fade-in {
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .delta-positive { color: #22c55e; }
+  .delta-negative { color: #ef4444; }
+  .delta-neutral { color: #64748b; }
+</style>
+</head>
+<body>
+
+<div style="max-width: 1440px; margin: 0 auto; padding: 0 0 60px;">
+
+  <!-- Header -->
+  <div class="header-bar" style="padding: 20px 28px 0;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+      <div>
+        <h1 style="font-size: 20px; font-weight: 800; color: #c7d2fe; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;">
+          <span style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #818cf8); display: inline-flex; align-items: center; justify-content: center; font-size: 16px;">&#9632;</span>
+          광고주 시그널 보드 & 리밸런싱 시뮬레이터
+        </h1>
+        <p style="font-size: 12px; color: #64748b; margin-top: 4px; padding-left: 40px;">팀 리더 대시보드 &mdash; 광고주 성과 모니터링 및 예산 시뮬레이션</p>
+      </div>
+      <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 6px;">
+        <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+        2026년 3월 기준
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display: flex; gap: 4px; border-bottom: 1px solid #1e2035;">
+      <button class="tab-btn active" data-tab="signal" onclick="switchTab('signal')">시그널 보드</button>
+      <button class="tab-btn" data-tab="rebalance" onclick="switchTab('rebalance')">리밸런싱 시뮬레이터</button>
+    </div>
+  </div>
+
+  <div style="padding: 24px 28px 0;">
+
+    <!-- ============== TAB 1: SIGNAL BOARD ============== -->
+    <div id="tab-signal" class="fade-in">
+
+      <!-- Summary Stats -->
+      <div id="summary-bar" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;"></div>
+
+      <!-- Filter -->
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 500;">담당자 필터:</span>
+        <select id="member-filter" class="select-custom" onchange="renderCards()">
+          <option value="전체">전체</option>
+          <option value="김민수">김민수</option>
+          <option value="이서연">이서연</option>
+          <option value="박준혁">박준혁</option>
+        </select>
+      </div>
+
+      <!-- Card Grid -->
+      <div id="card-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;"></div>
+    </div>
+
+    <!-- ============== TAB 2: REBALANCING SIMULATOR ============== -->
+    <div id="tab-rebalance" style="display: none;" class="fade-in">
+
+      <!-- Comparison Bar -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div class="comparison-box">
+          <div style="font-size: 13px; color: #64748b; font-weight: 700; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em;">변경 전</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">총 취급고</div>
+              <div id="before-revenue" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">평균 ROAS</div>
+              <div id="before-roas" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">총 광고비</div>
+              <div id="before-adspend" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-box" style="border-color: #6366f1;">
+          <div style="font-size: 13px; color: #818cf8; font-weight: 700; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em;">변경 후</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">총 취급고</div>
+              <div id="after-revenue" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+              <div id="delta-revenue" style="font-size: 12px; margin-top: 3px; font-weight: 600;" class="delta-neutral">-</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">평균 ROAS</div>
+              <div id="after-roas" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+              <div id="delta-roas" style="font-size: 12px; margin-top: 3px; font-weight: 600;" class="delta-neutral">-</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">총 광고비</div>
+              <div id="after-adspend" style="font-size: 20px; font-weight: 800; color: #c7d2fe;">-</div>
+              <div id="delta-adspend" style="font-size: 12px; margin-top: 3px; font-weight: 600;" class="delta-neutral">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart + Panel -->
+      <div style="display: grid; grid-template-columns: 1fr 360px; gap: 20px;">
+        <!-- Bubble Chart -->
+        <div style="background: #1a1d2e; border: 1px solid #252840; border-radius: 12px; padding: 20px; min-height: 500px; position: relative;">
+          <div style="font-size: 13px; color: #94a3b8; font-weight: 600; margin-bottom: 12px;">광고주 포지션 맵</div>
+          <div style="height: 440px; position: relative;">
+            <canvas id="bubbleChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Simulation Panel -->
+        <div style="background: #1a1d2e; border: 1px solid #252840; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+          <div style="font-size: 16px; font-weight: 700; color: #c7d2fe;">시뮬레이션 패널</div>
+
+          <div>
+            <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 6px; font-weight: 500;">광고주 선택</label>
+            <select id="sim-advertiser" class="select-custom" style="width: 100%;" onchange="onSimAdvertiserChange()"></select>
+          </div>
+
+          <div>
+            <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 8px; font-weight: 500;">예산 조정</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 11px; color: #64748b; white-space: nowrap; min-width: 32px;">-50%</span>
+              <input type="range" id="budget-slider" min="-50" max="100" value="0" step="5" oninput="onSliderChange()">
+              <span style="font-size: 11px; color: #64748b; white-space: nowrap; min-width: 40px;">+100%</span>
+            </div>
+            <div style="text-align: center; margin-top: 8px;">
+              <span id="slider-label" style="font-size: 28px; font-weight: 800; color: #818cf8;">0%</span>
+            </div>
+          </div>
+
+          <div style="background: #0f1117; border: 1px solid #1e2035; border-radius: 10px; padding: 18px;">
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 12px;">선택 광고주 시뮬레이션 결과</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">현재 광고비</span>
+                <span id="sim-current-spend" style="font-size: 13px; font-weight: 600; color: #c7d2fe;">-</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">조정 광고비</span>
+                <span id="sim-new-spend" style="font-size: 13px; font-weight: 700; color: #818cf8;">-</span>
+              </div>
+              <div style="height: 1px; background: #1e2035; margin: 4px 0;"></div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">현재 ROAS</span>
+                <span id="sim-current-roas" style="font-size: 13px; font-weight: 600; color: #c7d2fe;">-</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">예상 ROAS</span>
+                <span id="sim-new-roas" style="font-size: 13px; font-weight: 700; color: #818cf8;">-</span>
+              </div>
+              <div style="height: 1px; background: #1e2035; margin: 4px 0;"></div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">예상 취급고</span>
+                <span id="sim-new-revenue" style="font-size: 14px; font-weight: 700; color: #818cf8;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-reset" style="width: 100%; margin-top: auto;" onclick="resetSimulation()">
+            &#8635; 초기화
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================= DATA =============================
+const advertisers = [
+  {
+    id: 1, name: '스마트홈코리아', member: '김민수',
+    revenue: 8500, prevRevenue: 9200, roas: 320, adSpend: 2650,
+    weekly: [2250, 2180, 2050, 2020]
+  },
+  {
+    id: 2, name: '프레시가든', member: '김민수',
+    revenue: 4200, prevRevenue: 5800, roas: 180, adSpend: 2330,
+    weekly: [1520, 1180, 950, 550]
+  },
+  {
+    id: 3, name: '뷰티랩서울', member: '김민수',
+    revenue: 6100, prevRevenue: 5900, roas: 290, adSpend: 2100,
+    weekly: [1470, 1510, 1540, 1580]
+  },
+  {
+    id: 4, name: '핏앤라이프', member: '이서연',
+    revenue: 3800, prevRevenue: 3600, roas: 260, adSpend: 1460,
+    weekly: [910, 935, 960, 995]
+  },
+  {
+    id: 5, name: '테크기어', member: '이서연',
+    revenue: 12000, prevRevenue: 9500, roas: 350, adSpend: 3430,
+    weekly: [2650, 2880, 3120, 3350]
+  },
+  {
+    id: 6, name: '리빙플러스', member: '이서연',
+    revenue: 2900, prevRevenue: 3400, roas: 220, adSpend: 1320,
+    weekly: [870, 790, 710, 530]
+  },
+  {
+    id: 7, name: '키즈팩토리', member: '박준혁',
+    revenue: 5600, prevRevenue: 5500, roas: 310, adSpend: 1810,
+    weekly: [1370, 1390, 1420, 1420]
+  },
+  {
+    id: 8, name: '델리박스', member: '박준혁',
+    revenue: 7300, prevRevenue: 8900, roas: 240, adSpend: 3040,
+    weekly: [2080, 1940, 1780, 1500]
+  }
+];
+
+// ============================= SIGNAL LOGIC =============================
+function getSignal(adv) {
+  const changeRate = ((adv.revenue - adv.prevRevenue) / adv.prevRevenue) * 100;
+  if (changeRate <= -20) return 'danger';
+  if (changeRate <= -10 || adv.roas < 250) return 'warning';
+  if (changeRate >= 20) return 'opportunity';
+  return 'stable';
+}
+
+function getSignalLabel(sig) {
+  return { danger: '위험', warning: '주의', opportunity: '기회', stable: '안정' }[sig];
+}
+
+function getSignalEmoji(sig) {
+  return { danger: '\uD83D\uDD34', warning: '\uD83D\uDFE1', opportunity: '\uD83D\uDD35', stable: '\uD83D\uDFE2' }[sig];
+}
+
+function getSignalBadgeClass(sig) {
+  return { danger: 'badge-danger', warning: 'badge-warning', opportunity: 'badge-opportunity', stable: 'badge-stable' }[sig];
+}
+
+function getSignalChartColor(sig) {
+  return { danger: '#ef4444', warning: '#eab308', opportunity: '#3b82f6', stable: '#22c55e' }[sig];
+}
+
+function getSignalColorRGBA(sig, alpha) {
+  return {
+    danger: `rgba(239,68,68,${alpha})`,
+    warning: `rgba(234,179,8,${alpha})`,
+    opportunity: `rgba(59,130,246,${alpha})`,
+    stable: `rgba(34,197,94,${alpha})`
+  }[sig];
+}
+
+function getChangeRate(adv) {
+  return ((adv.revenue - adv.prevRevenue) / adv.prevRevenue) * 100;
+}
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('ko-KR');
+}
+
+// ============================= COMMENTS =============================
+function getComments(advId) {
+  try {
+    const raw = localStorage.getItem('tl_comments_' + advId);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveComment(advId, text) {
+  const comments = getComments(advId);
+  comments.unshift({ text, time: new Date().toLocaleString('ko-KR') });
+  localStorage.setItem('tl_comments_' + advId, JSON.stringify(comments));
+}
+
+function deleteComment(advId, idx) {
+  const comments = getComments(advId);
+  comments.splice(idx, 1);
+  localStorage.setItem('tl_comments_' + advId, JSON.stringify(comments));
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ============================= TAB SWITCHING =============================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById('tab-signal').style.display = tab === 'signal' ? '' : 'none';
+  document.getElementById('tab-rebalance').style.display = tab === 'rebalance' ? '' : 'none';
+  if (tab === 'rebalance') {
+    setTimeout(() => {
+      initBubbleChart();
+      updateComparison();
+    }, 50);
+  }
+}
+
+// ============================= TAB 1: SIGNAL BOARD =============================
+let miniChartInstances = {};
+let expandedCardId = null;
+
+function renderSummary(list) {
+  const counts = { danger: 0, warning: 0, opportunity: 0, stable: 0 };
+  list.forEach(a => counts[getSignal(a)]++);
+
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-number" style="color: #c7d2fe;">${list.length}</div>
+      <div class="stat-label">전체 광고주</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #ef4444;">
+      <div class="stat-number" style="color: #ef4444;">${counts.danger}</div>
+      <div class="stat-label">\uD83D\uDD34 위험</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #eab308;">
+      <div class="stat-number" style="color: #eab308;">${counts.warning}</div>
+      <div class="stat-label">\uD83D\uDFE1 주의</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #3b82f6;">
+      <div class="stat-number" style="color: #3b82f6;">${counts.opportunity}</div>
+      <div class="stat-label">\uD83D\uDD35 기회</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #22c55e;">
+      <div class="stat-number" style="color: #22c55e;">${counts.stable}</div>
+      <div class="stat-label">\uD83D\uDFE2 안정</div>
+    </div>
+  `;
+}
+
+function renderCards() {
+  const filter = document.getElementById('member-filter').value;
+  const filtered = filter === '전체' ? [...advertisers] : advertisers.filter(a => a.member === filter);
+
+  renderSummary(filtered);
+
+  // Destroy existing mini charts
+  Object.values(miniChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  miniChartInstances = {};
+
+  // Sort: danger first
+  const order = { danger: 0, warning: 1, opportunity: 2, stable: 3 };
+  filtered.sort((a, b) => order[getSignal(a)] - order[getSignal(b)]);
+
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+
+  filtered.forEach(adv => {
+    const sig = getSignal(adv);
+    const rate = getChangeRate(adv);
+    const rateStr = rate >= 0 ? `\u25B2${rate.toFixed(1)}%` : `\u25BC${Math.abs(rate).toFixed(1)}%`;
+    const rateClass = rate >= 0 ? 'change-up' : 'change-down';
+    const isExpanded = expandedCardId === adv.id;
+    const comments = getComments(adv.id);
+
+    const card = document.createElement('div');
+    card.className = `signal-card ${sig}${isExpanded ? ' expanded' : ''}`;
+    card.innerHTML = `
+      <div style="padding: 20px;" onclick="toggleCard(${adv.id})">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span class="pulse-dot ${sig}"></span>
+            <span style="font-size: 16px; font-weight: 700; color: #e2e8f0;">${adv.name}</span>
+            <span class="signal-badge ${getSignalBadgeClass(sig)}">${getSignalEmoji(sig)} ${getSignalLabel(sig)}</span>
+          </div>
+          <svg style="width: 16px; height: 16px; color: #64748b; transition: transform 0.3s; transform: rotate(${isExpanded ? '180' : '0'}deg); flex-shrink: 0; margin-top: 4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div style="font-size: 12px; color: #64748b; margin-bottom: 14px;">
+          담당: <span style="color: #94a3b8; font-weight: 500;">${adv.member}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+          <div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">월 취급고</div>
+            <div style="font-size: 18px; font-weight: 800; color: #c7d2fe;">${fmt(adv.revenue)}<span style="font-size: 12px; color: #64748b; font-weight: 400;">만</span></div>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">전월 대비</div>
+            <div style="font-size: 16px; font-weight: 700;" class="${rateClass}">${rateStr}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">ROAS</div>
+            <div style="font-size: 16px; font-weight: 700; color: #e2e8f0;">${adv.roas}%</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">광고비</div>
+            <div style="font-size: 16px; font-weight: 700; color: #e2e8f0;">${fmt(adv.adSpend)}<span style="font-size: 11px; color: #64748b; font-weight: 400;">만</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="expand-area${isExpanded ? ' open' : ''}" id="expand-${adv.id}">
+        <div style="padding: 0 20px 20px; border-top: 1px solid #252840; padding-top: 16px;" onclick="event.stopPropagation()">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Mini Chart -->
+            <div>
+              <div style="font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 10px;">주간 취급고 추이 (최근 4주)</div>
+              <div style="background: #0f1117; border-radius: 10px; padding: 14px; height: 180px; position: relative;">
+                <canvas id="miniChart-${adv.id}"></canvas>
+              </div>
+            </div>
+            <!-- Comments -->
+            <div>
+              <div style="font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 10px;">팀원에게 코멘트</div>
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="input-custom" id="commentInput-${adv.id}" placeholder="코멘트를 입력하세요..." style="flex: 1;" onkeydown="if(event.key==='Enter') addComment(${adv.id})">
+                <button class="btn-primary" onclick="addComment(${adv.id})">저장</button>
+              </div>
+              <div id="commentList-${adv.id}" style="max-height: 120px; overflow-y: auto;">
+                ${comments.length === 0 ? '<div style="font-size: 12px; color: #475569; padding: 8px 0;">저장된 코멘트가 없습니다</div>' : ''}
+                ${comments.map((c, i) => `
+                  <div class="comment-item">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                      <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5;">${escapeHtml(c.text)}</div>
+                      <span style="font-size: 10px; color: #64748b; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: all 0.15s; flex-shrink: 0;" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.color='#64748b'; this.style.background='transparent'" onclick="handleDeleteComment(${adv.id}, ${i})">&#10005;</span>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">${c.time}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Render mini chart for expanded card
+  if (expandedCardId) {
+    const adv = advertisers.find(a => a.id === expandedCardId);
+    if (adv) setTimeout(() => renderMiniChart(adv), 80);
+  }
+}
+
+function toggleCard(id) {
+  // Destroy previous chart
+  Object.values(miniChartInstances).forEach(c => { try { c.destroy(); } catch(e){} });
+  miniChartInstances = {};
+
+  expandedCardId = expandedCardId === id ? null : id;
+  renderCards();
+}
+
+function renderMiniChart(adv) {
+  const canvas = document.getElementById('miniChart-' + adv.id);
+  if (!canvas) return;
+
+  const sig = getSignal(adv);
+  const color = getSignalChartColor(sig);
+
+  if (miniChartInstances[adv.id]) {
+    try { miniChartInstances[adv.id].destroy(); } catch(e){}
+  }
+
+  miniChartInstances[adv.id] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: ['1주차', '2주차', '3주차', '4주차'],
+      datasets: [{
+        data: adv.weekly,
+        borderColor: color,
+        backgroundColor: color + '18',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: color,
+        pointBorderColor: '#0f1117',
+        pointBorderWidth: 2,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1d2e',
+          titleColor: '#c7d2fe',
+          bodyColor: '#94a3b8',
+          borderColor: '#252840',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: function(ctx) { return fmt(ctx.parsed.y) + '만원'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', font: { size: 11, family: 'Noto Sans KR' } },
+          grid: { color: '#1e2035' }
+        },
+        y: {
+          ticks: { color: '#64748b', font: { size: 11, family: 'Noto Sans KR' }, callback: v => fmt(v) + '만' },
+          grid: { color: '#1e2035' }
+        }
+      }
+    }
+  });
+}
+
+function addComment(id) {
+  const input = document.getElementById('commentInput-' + id);
+  const text = input.value.trim();
+  if (!text) return;
+  saveComment(id, text);
+  input.value = '';
+  renderCards();
+}
+
+function handleDeleteComment(advId, idx) {
+  deleteComment(advId, idx);
+  renderCards();
+}
+
+// ============================= TAB 2: REBALANCING =============================
+let bubbleChartInstance = null;
+let simState = {};
+
+function initSimState() {
+  simState = {};
+  advertisers.forEach(a => {
+    simState[a.id] = {
+      adSpend: a.adSpend,
+      roas: a.roas,
+      revenue: a.revenue
+    };
+  });
+}
+
+function populateSimDropdown() {
+  const sel = document.getElementById('sim-advertiser');
+  sel.innerHTML = '<option value="">광고주를 선택하세요</option>';
+  advertisers.forEach(a => {
+    sel.innerHTML += `<option value="${a.id}">${a.name} (${a.member})</option>`;
+  });
+}
+
+function onSimAdvertiserChange() {
+  const id = parseInt(document.getElementById('sim-advertiser').value);
+  if (!id) {
+    document.getElementById('budget-slider').value = 0;
+    document.getElementById('slider-label').textContent = '0%';
+    clearSimPanel();
+    return;
+  }
+  // Reset this advertiser in sim state
+  const adv = advertisers.find(a => a.id === id);
+  simState[id] = { adSpend: adv.adSpend, roas: adv.roas, revenue: adv.revenue };
+  document.getElementById('budget-slider').value = 0;
+  document.getElementById('slider-label').textContent = '0%';
+  updateSimPanel();
+  initBubbleChart();
+  updateComparison();
+}
+
+function onSliderChange() {
+  const pct = parseInt(document.getElementById('budget-slider').value);
+  const sign = pct >= 0 ? '+' : '';
+  document.getElementById('slider-label').textContent = sign + pct + '%';
+
+  const idStr = document.getElementById('sim-advertiser').value;
+  if (!idStr) return;
+  const id = parseInt(idStr);
+  const adv = advertisers.find(a => a.id === id);
+
+  // Calculate adjusted values
+  const newSpend = adv.adSpend * (1 + pct / 100);
+
+  // Diminishing returns: ROAS = original_ROAS / sqrt(budget_ratio)
+  const budgetRatio = newSpend / adv.adSpend;
+  const newRoas = budgetRatio > 0 ? adv.roas / Math.sqrt(budgetRatio) : adv.roas;
+
+  // Revenue = adSpend * ROAS / 100
+  const newRevenue = newSpend * newRoas / 100;
+
+  simState[id] = {
+    adSpend: Math.round(newSpend),
+    roas: Math.round(newRoas * 10) / 10,
+    revenue: Math.round(newRevenue)
+  };
+
+  updateSimPanel();
+  initBubbleChart();
+  updateComparison();
+}
+
+function clearSimPanel() {
+  ['sim-current-spend', 'sim-new-spend', 'sim-current-roas', 'sim-new-roas', 'sim-new-revenue'].forEach(id => {
+    document.getElementById(id).textContent = '-';
+  });
+}
+
+function updateSimPanel() {
+  const idStr = document.getElementById('sim-advertiser').value;
+  if (!idStr) { clearSimPanel(); return; }
+  const id = parseInt(idStr);
+  const adv = advertisers.find(a => a.id === id);
+  const st = simState[id];
+
+  document.getElementById('sim-current-spend').textContent = fmt(adv.adSpend) + '만원';
+  document.getElementById('sim-new-spend').textContent = fmt(st.adSpend) + '만원';
+  document.getElementById('sim-current-roas').textContent = adv.roas + '%';
+  document.getElementById('sim-new-roas').textContent = (Math.round(st.roas * 10) / 10).toFixed(0) + '%';
+  document.getElementById('sim-new-revenue').textContent = fmt(st.revenue) + '만원';
+}
+
+function updateComparison() {
+  // Before
+  const totalRevBefore = advertisers.reduce((s, a) => s + a.revenue, 0);
+  const avgRoasBefore = advertisers.reduce((s, a) => s + a.roas, 0) / advertisers.length;
+  const totalSpendBefore = advertisers.reduce((s, a) => s + a.adSpend, 0);
+
+  document.getElementById('before-revenue').textContent = fmt(totalRevBefore) + '만원';
+  document.getElementById('before-roas').textContent = avgRoasBefore.toFixed(0) + '%';
+  document.getElementById('before-adspend').textContent = fmt(totalSpendBefore) + '만원';
+
+  // After
+  const totalRevAfter = advertisers.reduce((s, a) => s + simState[a.id].revenue, 0);
+  const avgRoasAfter = advertisers.reduce((s, a) => s + simState[a.id].roas, 0) / advertisers.length;
+  const totalSpendAfter = advertisers.reduce((s, a) => s + simState[a.id].adSpend, 0);
+
+  document.getElementById('after-revenue').textContent = fmt(Math.round(totalRevAfter)) + '만원';
+  document.getElementById('after-roas').textContent = avgRoasAfter.toFixed(0) + '%';
+  document.getElementById('after-adspend').textContent = fmt(Math.round(totalSpendAfter)) + '만원';
+
+  // Deltas
+  setDelta('delta-revenue', totalRevAfter - totalRevBefore, '만원', false);
+  setDelta('delta-roas', avgRoasAfter - avgRoasBefore, '%p', false);
+  setDelta('delta-adspend', totalSpendAfter - totalSpendBefore, '만원', true);
+}
+
+function setDelta(elId, diff, unit, invertColor) {
+  const el = document.getElementById(elId);
+  if (Math.abs(diff) < 0.5) {
+    el.textContent = '-';
+    el.className = 'delta-neutral';
+    return;
+  }
+  const isPositive = diff > 0;
+  const arrow = isPositive ? '\u25B2' : '\u25BC';
+  let cls;
+  if (invertColor) {
+    cls = isPositive ? 'delta-negative' : 'delta-positive';
+  } else {
+    cls = isPositive ? 'delta-positive' : 'delta-negative';
+  }
+  el.className = cls;
+  el.textContent = `${arrow} ${fmt(Math.abs(Math.round(diff)))}${unit}`;
+}
+
+function initBubbleChart() {
+  const canvas = document.getElementById('bubbleChart');
+  if (!canvas) return;
+
+  if (bubbleChartInstance) {
+    bubbleChartInstance.destroy();
+    bubbleChartInstance = null;
+  }
+
+  const datasets = advertisers.map(adv => {
+    const st = simState[adv.id];
+    const sig = getSignal(adv);
+    const bubbleR = Math.max(10, Math.sqrt(st.adSpend) * 0.55);
+
+    return {
+      label: adv.name,
+      data: [{
+        x: st.roas,
+        y: st.revenue,
+        r: bubbleR
+      }],
+      backgroundColor: getSignalColorRGBA(sig, 0.55),
+      borderColor: getSignalChartColor(sig),
+      borderWidth: 2,
+      hoverBackgroundColor: getSignalColorRGBA(sig, 0.8),
+      hoverBorderWidth: 3,
+      _advId: adv.id,
+      _member: adv.member,
+      _adSpend: st.adSpend,
+      _signal: sig
+    };
+  });
+
+  bubbleChartInstance = new Chart(canvas, {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: { top: 20, right: 20, bottom: 10, left: 10 }
+      },
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1d2e',
+          titleColor: '#c7d2fe',
+          bodyColor: '#94a3b8',
+          borderColor: '#252840',
+          borderWidth: 1,
+          padding: 14,
+          displayColors: false,
+          titleFont: { size: 14, weight: 'bold', family: 'Noto Sans KR' },
+          bodyFont: { size: 12, family: 'Noto Sans KR' },
+          callbacks: {
+            title: function(items) {
+              if (!items.length) return '';
+              return items[0].dataset.label;
+            },
+            label: function(ctx) {
+              const ds = ctx.dataset;
+              const st = simState[ds._advId];
+              const sig = ds._signal;
+              return [
+                `담당: ${ds._member}`,
+                `취급고: ${fmt(st.revenue)}만원`,
+                `ROAS: ${Math.round(st.roas)}%`,
+                `광고비: ${fmt(st.adSpend)}만원`,
+                `시그널: ${getSignalEmoji(sig)} ${getSignalLabel(sig)}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'ROAS (%)',
+            color: '#94a3b8',
+            font: { size: 13, weight: '600', family: 'Noto Sans KR' }
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11, family: 'Noto Sans KR' },
+            callback: v => v + '%'
+          },
+          grid: { color: '#1e2035' },
+          min: 100,
+          max: 450
+        },
+        y: {
+          title: {
+            display: true,
+            text: '월 취급고 (만원)',
+            color: '#94a3b8',
+            font: { size: 13, weight: '600', family: 'Noto Sans KR' }
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11, family: 'Noto Sans KR' },
+            callback: v => fmt(v) + '만'
+          },
+          grid: { color: '#1e2035' },
+          min: 0,
+          max: 15000
+        }
+      }
+    },
+    plugins: [{
+      id: 'bubbleNameLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, dsIdx) => {
+          const meta = chart.getDatasetMeta(dsIdx);
+          meta.data.forEach((el, i) => {
+            ctx.save();
+            ctx.font = "600 11px 'Noto Sans KR', sans-serif";
+            ctx.fillStyle = '#c7d2fe';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(ds.label, el.x, el.y - el.options.radius - 5);
+            ctx.restore();
+          });
+        });
+      }
+    }]
+  });
+}
+
+function resetSimulation() {
+  initSimState();
+  document.getElementById('budget-slider').value = 0;
+  document.getElementById('slider-label').textContent = '0%';
+  updateSimPanel();
+  initBubbleChart();
+  updateComparison();
+}
+
+// ============================= INIT =============================
+function init() {
+  initSimState();
+  renderCards();
+  populateSimDropdown();
+  updateSimPanel();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
